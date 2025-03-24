@@ -51,7 +51,6 @@ pipeline {
 
         stage('Deploy to GKE') {
             steps {
-                sh "kubectl set image deployment/flaskapp flask-app=$DOCKER_IMAGE_LATEST --record"
                 sh "kubectl apply -f deployment.yaml"
             }
         }
