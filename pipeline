@@ -6,7 +6,6 @@ pipeline {
         DOCKER_IMAGE_LATEST = "sukanya996/flaskimg-app:latest"   // Latest tag for deployment
         GKE_CLUSTER = "cluster-1"
         GKE_ZONE = "us-central1-c"
-        PROJECT_ID = "your-gcp-project-id"
     }
 
     stages {
