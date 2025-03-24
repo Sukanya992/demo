@@ -2,21 +2,43 @@ pipeline {
     agent any
 
     environment {
-        PROJECT_ID = 'sukanya-project-452710'
-        GKE_CLUSTER = 'cluster-1'
-        GKE_ZONE = 'us-central1-c'
-        BUILD_NUMBER = "${env.BUILD_NUMBER}" // Dynamically tag image with build number
-        IMAGE_NAME = "" // Customize image name
+        DOCKER_IMAGE = "sukanya996/flaskimg-app:${BUILD_NUMBER}" // Custom image with build number
+        DOCKER_IMAGE_LATEST = "sukanya996/flaskimg-app:latest"   // Latest tag for deployment
+        GKE_CLUSTER = "cluster-1"
+        GKE_ZONE = "us-central1-c	"
+        PROJECT_ID = "your-gcp-project-id"
     }
 
     stages {
         stage('Checkout Code') {
             steps {
-                git 'https://github.com/your-repo/simple-flask-app.git'
+                git 'https://github.com/Sukanya992/demo.git'  // Update with your actual GitHub repo
             }
         }
 
-        stage('Authenticate with GCP') {
+        stage('Build Docker Image') {
+            steps {
+                sh "docker build -t $DOCKER_IMAGE ."
+                sh "docker tag $DOCKER_IMAGE $DOCKER_IMAGE_LATEST"
+            }
+        }
+
+        stage('Login to Docker Hub') {
+            steps {
+                withCredentials([usernamePassword(credentialsId: 'docker-hub-credentials', usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PASS')]) {
+                    sh "echo $DOCKER_PASS | docker login -u $DOCKER_USER --password-stdin"
+                }
+            }
+        }
+
+        stage('Push Docker Image to Docker Hub') {
+            steps {
+                sh "docker push $DOCKER_IMAGE"
+                sh "docker push $DOCKER_IMAGE_LATEST"
+            }
+        }
+
+        stage('Authenticate with GKE') {
             steps {
                 withCredentials([file(credentialsId: 'gcp-sa-key', variable: 'GOOGLE_APPLICATION_CREDENTIALS')]) {
                     sh """
@@ -28,25 +50,10 @@ pipeline {
             }
         }
 
-        stage('Build Docker Image') {
-            steps {
-                sh "docker build -t $IMAGE_NAME ."
-            }
-        }
-
-        stage('Push Docker Image') {
-            steps {
-                sh "gcloud auth configure-docker"
-                sh "docker push $IMAGE_NAME"
-            }
-        }
-
         stage('Deploy to GKE') {
             steps {
-                sh """
-                    kubectl set image deployment/flask-app flask-app=$IMAGE_NAME
-                    kubectl apply -f k8s/service.yaml
-                """
+                sh "kubectl set image deployment/flaskapp flask-app=$DOCKER_IMAGE_LATEST --record"
+                sh "kubectl apply -f deployment.yaml"
             }
         }
     }
